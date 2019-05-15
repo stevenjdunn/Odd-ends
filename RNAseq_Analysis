@@ -1,0 +1,64 @@
+# Differential Gene Expression Analysis With Kallisto and Degust
+# Based on: http://sepsis-omics.github.io/tutorials/modules/kallisto/
+# Assumes you have kallisto installed and working, I have it in a conda environment
+# Uses denovo annotations from PROKKA in genbank format
+# Assumes you have a directory containing all genbank files with appropriate sample name
+# Assumes your filenames encode info on condition and replicate number.
+
+### START ###
+
+# Set conda environment
+source activate rnaseq
+
+
+# Move to reference directory
+cd ~/Reads/BBSRC/RNA/Parental
+
+# Convert genbank to gene-based fasta and feature table
+for f in *.gbk; do echo "python genbank_to_kallisto.py $f ${f/.gbk/.trans} ${f/.gbk/tsv}#
+
+# Pass headers to feature tables:
+for f in *.tsv; do sed -i $'1 i\\\nlocustag\tobject\tgene\tec\tfunction' $f; done 
+
+# Index trans file
+for f in *.trans do kallisto index -i ${f/.trans/.idx} $f
+
+# Now on a per-sample basis, using sample F047 as an example:
+# Set index and feature table variables
+i='/home/bioinformatic/Reads/BBSRC/RNA/Parental/F047.idx'
+t='/home/bioinformatic/Reads/BBSRC/RNA/Parental/F047.tsv'
+
+# Navigate to sample directory:
+cd ~/Reads/BBSRC/RNA/Samples/F047
+
+# Cleanup Liverpool CGR read filenames
+for f in *.gz; do mv $f ${f#*-}; done
+for f in *.gz; do mv $f ${f/190328_L*_/}; done
+
+# Quantify DGE
+for f in *R1.fastq.gz; do kallisto quant -i $i -o ${f/_R1.fastq.gz/} -t 28 $f ${f/R1/R2}; done
+
+# Copy abundances to results folder
+for f in */; do cp $f"abundance.tsv" ${f/\//_abundance.tsv}; done
+
+# Extract columns | parallel -j based on number of samples/replicates, with one job per sample
+for f in *.tsv; do echo "cut -f4 -d$'\t' ${f} | tail -n +2 > ${f/.tsv/_headless.tsv}"; done > commands.sh
+parallel -j 6 < commands.sh
+
+# Remove temp files
+rm *abundance.tsv
+
+# Add sample name & condition to header
+for f in *.tsv; do echo "echo -e '"${f%_abundance_headless.tsv}"' | cat - $f > ${f/_abundance_headless/}"; done > commands.sh
+sed -i "s/'/\\\"/g" commands.sh
+parallel -j 6 < commands.sh
+
+# Remove temp files
+rm *headless*
+
+# Create final output file
+files=*.tsv
+paste $files $t > counts.tsv
+
+# Load counts.tsv into Degust with ID set to locustag + gene, and two conditions representing the three biological replicates of PA and CTX
+# Sort and save as csv.
