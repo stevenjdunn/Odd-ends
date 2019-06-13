@@ -1,6 +1,9 @@
+# These snippets are for reproducibility. I find it helpful to write things as if I'm explaining them to someone else.
+# That way, when I come back to it, my comments make more sense (at least to me), and I can also share what I've done with collaborators.
+
 # The purpose of this analysis was to find significantly different DGE amongst ST's/Clades of E. coli
 # The input data was output from Degust. The original RNAseq data was from biological triplicates analysed using Kallisto
-# That part of the analysis is covered here: https://github.com/stevenjdunn/Odd-ends/blob/master/RNAseq_Analysis
+# [That part of the analysis is covered here](https://github.com/stevenjdunn/Odd-ends/blob/master/RNAseq_Analysis)
 # My final file contained 4465 genes.
 
 # This data was compiled with the ST/Clade information for each isolate to form our groups for the ANOVA
@@ -191,7 +194,141 @@ parallel -j 2 < commands.txt
 # Our results are now in an easily parsable format. For example, I can look at all of the P values listed with filenames by doing:
 cut -f 1,5 -d ' ' *trimmed*
 
-### TO BE CONTINUED ###
-# TO DO #
-# FILTER FOR ONLY SIG VALUES
-# VISUALISE SIG GROUPS BY GENE
+# I want to get a final data frame with column 1 as the group names, and each subsequent column representing a gene and the P-values for each group. 
+# First, I need to filter the trimmed files to only include the gene name, and final column containing the P-values.
+for f in *_trimmed.txt; do echo "cut -f 5 -d ' ' $f > ${f/_trimmed/_final}"; done > commands.txt
+parallel -j 2 < commands.txt
+
+cat zraP_final.txt
+  >zraP_filt.txt
+  0.9999997
+  0.9993142
+  0.1296095
+  0.9181742
+  0.2912156
+  0.9990111
+  0.0754983
+  0.8699759
+  0.1984198
+  0.0771342
+  0.9569820
+  0.2664837
+  0.0764317
+  0.0327328
+  0.5673864
+
+# Now to undo some work I did earlier... and remove the > sign and _filt.txt from the files. 
+# To make things a little easier I'll move the files to a new directory
+mkdir final
+mv *_final.txt final/
+cd final
+for f in *_final.txt; do echo "sed 's/>//g' $f | sed 's/_filt.txt//g' > ${f/_final/}"; done > commands.txt
+parallel -j 2 < commands.txt
+mkdir Tukey
+mv *.txt Tukey
+cd Tukey
+mv *_final.txt ../
+rm commands.txt
+
+cat zraP.txt
+  zraP
+  0.9999997
+  0.9993142
+  0.1296095
+  0.9181742
+  0.2912156
+  0.9990111
+  0.0754983
+  0.8699759
+  0.1984198
+  0.0771342
+  0.9569820
+  0.2664837
+  0.0764317
+  0.0327328
+  0.5673864
+
+# I also want to prepare a .csv containing the group interaction names.
+# It was quicker for me just to copy this into a text file manually.
+
+# Now back to R. The set up for this loop is largely similar to the previous ones.
+# Set up variables
+setwd("/Users/Steven/Desktop/RNA_Stats/Iteration/RNA/uniq/final/Tukey")
+path = ("/Users/Steven/Desktop/RNA_Stats/Iteration/RNA/uniq/final/Tukey")
+file.names <- dir(path, pattern =".txt")
+
+# Load group names into output dataframe
+df <- read.csv("/Users/Steven/Desktop/Groups.csv")
+
+# Iterate through data and combine with output dataframe.
+for(files in file.names){
+  input <- files
+  dv <- read.csv(input)
+  df <- cbind(df, dv)}
+
+# As mentioned before, you can get non-sig results from the Tukey despite having sig results via ANOVA.
+# My dataset contains ~200 such instances, and so I want to filter our Tukey results to only include significantly different genes.
+# Copy our dataframe and drop the groups column.
+dft <- df[,-1]
+
+# Get all columns with no values less than 0.05.
+dfu <- dft[,apply(dft,2,function(x) all(x>=0.05))]
+
+# Get the names of those columns
+dropList <- colnames(dfu)
+
+# Remove columns that don't have any value lower than 0.05.
+dft2 <- dft[, !colnames(dft) %in% dropList]
+
+# Now let's look at plotting the data. I want to create a heatmap, so first we need to transform the data using melt.
+data.m <- melt(dft2)
+
+# I want to bin the data according to whether values are significant or not. This will give a two colour scale on the heatmap.
+data.m$bins <- cut(data.m$value, c(0.05, Inf),
+                   labels=c("P<0.05"))
+                   
+# You can then plot it using something like the following:
+p <- ggplot(data.m, aes(x=variable, y=Groups, fill=bins)) + geom_tile() +
+  scale_fill_manual(values=c("#b2182b","#2166ac")) +
+  theme_minimal() + theme(axis.text.x = element_text(angle = 90))
+print(p)
+
+
+# Due to the number of datapoints, it takes around a decade for my laptop to render the graph in R.
+# If I want to make a slight change, that's another decade. Suddenly I'm 80, my retirement party is in 15 minutes and I'm still looking at a white screen in R-studio.
+# Instead, I subset the dataframes into as-equal-as-possible chunks and load the data into Prism 7.
+# I have 362 genes. I want the lowest common denominator. That's 4 dataframes that I need to subset and save:
+df1 <- dft2[1:89]
+df2 <- dft2[90:181]
+df3 <- dft2[182:273]
+df4 <- dft2[274:362]
+write.csv(df1, file="~/Desktop/df1.csv", row.names=FALSE)
+write.csv(df2, file="~/Desktop/df2.csv", row.names=FALSE)
+write.csv(df3, file="~/Desktop/df3.csv", row.names=FALSE)
+write.csv(df4, file="~/Desktop/df4.csv", row.names=FALSE)
+
+
+# Then prep them for Prism.
+# Prism has a lot of drawbacks to R, and a lot of useful stuff too. That works both ways. Typically, I like to use Prism for larger heatmaps.
+# This provides fine-scale adjustments in real time, ease of formatting and sizing, and overall a quicker end result.
+# [Here's a graph I made with Prism previously plotting the raw DGE data of FDR-significant genes.](https://github.com/stevenjdunn/Odd-ends/blob/master/Figures/DGE_fdr.pdf)
+
+# To briefly go over how I generated the plot:
+# I opened each csv in excel. Created a new prism project under grouped.
+# Copied over the gene groups from df1, duplicated that sheet 6 times (df1-7)
+# Copied over the genes + values to each respective sheet. 
+# Set colour to categorical, with two categories (P>0.05 and P<0.05). Non sig in light grey. 
+# Removed chart border, added cell borders in a very light grey 1.25pt
+# Removed legend, transposed values.
+# Set columns to titles, rotate 90. 
+# Reduce font size, change font, set to mid grey.
+# Set size ratio at 1:1. 
+# Resize to A4. 
+
+# Then I composite the graphs using Photoshop/Illustrator, and create a unified legend. 
+
+# [Here's the end result for now.](https://github.com/stevenjdunn/Odd-ends/blob/master/Figures/Significant%20Groups%20copy.pdf) 
+# This is still a rough copy - I need a way of combining this with the DGE values (earlier graph)
+# Or perhaps neatening up the groups to make it more informative. 
+# I might try graphing the DGE for the Tukey genes, and then drawing borders around isolates that belong to significantly different groups.
+
