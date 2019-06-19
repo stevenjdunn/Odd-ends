@@ -1,21 +1,24 @@
 # Differential Gene Expression Analysis With Kallisto and Degust
-# Based on: http://sepsis-omics.github.io/tutorials/modules/kallisto/
+
+# Based on Anna Syme's sepsis-omics tutorial available at: http://sepsis-omics.github.io/tutorials/modules/kallisto/
+
 # Assumes you have kallisto installed and working, I have it in a conda environment
-# Uses denovo annotations from PROKKA in genbank format
-# Assumes you have a directory containing all genbank files with appropriate sample name
-# Assumes your filenames encode info on condition and replicate number.
+# Uses de novo annotations from PROKKA in genbank format - I have hybrid ONT/Illumina assemblies
+# Assumes you have a directory containing all genbank files encoded with appropriate sample name
+# Assumes your read filenames encode info on condition and replicate number
 
 ### START ###
 
 # Set conda environment
 source activate rnaseq
 
-
 # Move to reference directory
-cd ~/Reads/BBSRC/RNA/Parental
+cd ~/Reads/RNA/Parental
 
 # Convert genbank to gene-based fasta and feature table
-for f in *.gbk; do echo "python genbank_to_kallisto.py $f ${f/.gbk/.trans} ${f/.gbk/.tsv}"; done > commands.sh
+# Uses Anna Syme's script available here: https://github.com/AnnaSyme/genbank_to_kallisto.py/blob/master/genbank_to_kallisto.py
+# e.g: wget https://raw.githubusercontent.com/AnnaSyme/genbank_to_kallisto.py/master/genbank_to_kallisto.py && chmod +x genbank_to_kallisto.py
+for f in *.gbk; do echo "python3 genbank_to_kallisto.py $f ${f/.gbk/.trans} ${f/.gbk/.tsv}"; done > commands.sh
 parallel -j 12 < commands.sh
 
 # Pass headers to feature tables:
@@ -32,7 +35,8 @@ t='/home/bioinformatic/Reads/BBSRC/RNA/Parental/F047.tsv'
 # Navigate to sample directory:
 cd ~/Reads/BBSRC/RNA/Samples/F047
 
-# Cleanup Liverpool CGR read filenames
+# OPTIONAL, DEPENDS ON FILENAME STRUCTURE
+# Cleanup Liverpool CGR read filenames 
 for f in *.gz; do mv $f ${f#*-}; done
 for f in *.gz; do mv $f ${f/190328_L*_/}; done
 
@@ -63,3 +67,5 @@ paste $files $t > counts.tsv
 
 # Load counts.tsv into Degust with Info field set to locustag + gene, and two conditions with 3+ biological replicates
 # Sort and save as csv.
+
+### END ###
