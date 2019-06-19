@@ -15,7 +15,8 @@ source activate rnaseq
 cd ~/Reads/BBSRC/RNA/Parental
 
 # Convert genbank to gene-based fasta and feature table
-for f in *.gbk; do echo "python genbank_to_kallisto.py $f ${f/.gbk/.trans} ${f/.gbk/tsv}#
+for f in *.gbk; do echo "python genbank_to_kallisto.py $f ${f/.gbk/.trans} ${f/.gbk/tsv}"; done > commands.txt
+parallel -j 12 < commands.txt
 
 # Pass headers to feature tables:
 for f in *.tsv; do sed -i $'1 i\\\nlocustag\tobject\tgene\tec\tfunction' $f; done 
