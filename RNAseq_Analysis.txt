@@ -61,5 +61,5 @@ rm *headless*
 files=*.tsv
 paste $files $t > counts.tsv
 
-# Load counts.tsv into Degust with ID set to locustag + gene, and two conditions representing the three biological replicates of PA and CTX
+# Load counts.tsv into Degust with Info field set to locustag + gene, and two conditions with 3+ biological replicates
 # Sort and save as csv.
