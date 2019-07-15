@@ -36,13 +36,13 @@ On Ubuntu/MacOS, you can use the native SCP:
 `scp -r ~/data/ user@server.ip.adress.here:/home/user/path/to/directory`
 
 ### Basecalling
-Next, we call guppy_basecaller. There's a whole section on Guppy below, it took me a fair chunk of time to get it optimised for our system. For now, here's the command I use to basecall a standard ligation prep with 14 barcodes:
+Next, we call guppy_basecaller. There's a whole write up on Guppy [here](https://github.com/stevenjdunn/Odd-ends/blob/master/Guppy_optimisation.md), it took me a fair chunk of time to get it optimised for our system. For now, here's the command I use to basecall a standard ligation prep with 14 barcodes:
 
 `guppy_basecaller --flowcell FLO-MIN106 --kit SQK-LSK109 --recursive -x auto --barcode_kits "EXP-NBD104 EXP-NBD114" --input_path test --save_path test_basecalls --chunk_size 1000 --chunks_per_runner 500 --num_callers 1 --gpu_runners_per_device 1`
 
 
 ### Summary Statistics
-After that's finished, you can get a quick overview of the run metrics using Wouter De Coster's excellent Nano suite, starting with NanoStat. This gives you an overview of yield, stats on the read length and quality distributions, and a list of the longest reads.
+After that's finished, you can get a quick overview of the run metrics using [Wouter De Coster's excellent Nano suite](https://github.com/wdecoster), starting with NanoStat. This gives you an overview of yield, stats on the read length and quality distributions, and a list of the longest reads.
 
 `NanoStat --summary sequencing_summary.txt > run_stats.txt`
 
@@ -79,7 +79,7 @@ Based on the output of NanoPlot, you may wish to trim your files. I'd recommend 
 `filtong --min_length 2000 BC01.fastq | gzip > BC01_trimmed.fastq.gz`
 
 ### Assembly
-For an overview of assembly methods, check out Ryan Wick's comparison. I use Uniycler to produce hybrid assemblies from ONT and Illumina data, or Flye+Racon on MinION only data. 
+For an overview of assembly methods, check out [Ryan Wick's comparison](https://github.com/rrwick/Long-read-assembler-comparison). I use Uniycler to produce hybrid assemblies from ONT and Illumina data, or Flye+Racon on MinION only data. 
 
 Again with Unicycler it's wise to use Parallel. Whilst some steps are highly scalable with the number of threads, some of the longest steps (e.g. loading large read sets) are single threaded. I tend to allocate 6 threads per assembly, but it will largely depend on your socket's performance and available RAM.
 
