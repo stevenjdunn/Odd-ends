@@ -21,15 +21,15 @@ Flags are defined by `--` and hand user definable options to guppy_basecaller. H
    * The path to the raw signal data, transferred from your sequencing platform. 
  * --recursive
    * Searches all subdirectories for fast5 files. 
- *--save_path
+ * --save_path
    * Where you want your basecalled data to go.
- *-x
+ * -x
    * Automatically chooses the basecalling device, can be manually specified. Note the single dash.  
- *--chunks_per_runner
+ * --chunks_per_runner
    * The number of chunks handed to the basecaller queue
- *--num_callers
+ * --num_callers
    * The number of active basecalling processes per *batch*
- *--gpu_runners_per_device
+ * --gpu_runners_per_device
    * The number of basecalling *batches*
 
 Note that the `--num_callers` and `--gpu_runners_per_device` are linked and will multiply. For example, `--num_callers 4` and `--gpu_runners_per_device 2` would use 8 threads. It would also increase the required VRAM as more chunks are allocated at a given time.
