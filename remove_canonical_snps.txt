@@ -1,0 +1,22 @@
+# When mapping to a denovo assembly, you often will identify false positive variants when autologously mapping the original constituitive reads used for the asssembly.
+# This can be due to many reasons, for example repetitive regions being collapsed into a single contig, or at the start or end of contigs.
+# This affects resequencing of the same strain. As such you will want may want to remove these variants from subsequent sequence data.
+# This is based on Snippy's .tab output.
+
+# Step One 
+# Collect snps.tab output into a single directory
+# Delete the 'Evidence' column from tab files, move output files into new directory
+for f in *.tab; do echo "cut -f 6 --complement $f > ${f/.tab/_cut.tab}"; done > commands.sh
+bash commands.sh
+mkdir Cut
+mv *_cut.tab Cut
+cd Cut
+
+# Step Two
+# Remove the first line from your reference tab file to maintain headers
+sed -i '1d' REF_cut.tab
+
+# Step Three
+# Using the output from the reference reads mapped against the reference denovo assembly, strip any identical lines.
+for f in *.tab; do echo "awk 'NR==FNR{a[$0];next} !($0 in a)' REF_cut.tab $f > ${f/_cut/_trimmed}"; done | sed 's/bash/$0/g' > commands.sh
+bash commands.sh
